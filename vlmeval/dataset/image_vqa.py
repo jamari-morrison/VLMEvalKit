@@ -1427,3 +1427,115 @@ class MMNIAH(ImageBaseDataset):
             if element['value'] == '':
                 msgs.remove(element)
         return msgs
+
+def int_from_string(text):
+    current_num = ""
+    
+    for char in text:
+        if char.isdigit():
+            current_num += char
+        elif current_num:  # If we've found digits and hit a non-digit, we're done
+            break
+            
+    return int(current_num) if current_num else None
+
+class CountbenchQA(ImageBaseDataset):
+    TYPE = 'VQA'
+    DATASET_URL = { #/home/ubuntu/LMUData/CountbenchQA.tsv
+        'CountbenchQA': 'https://huggingface.co/datasets/moondream/temp-VLMEvalKit-datasets/resolve/main/countbench_data.tsv'
+    }
+    DATASET_MD5 = {'CountbenchQA': 'c9853275a558ecf59a06c6cd2e44046a'}
+
+    from .utils.tablevqabench import FINTABNETQA_PROMPT, VTABFACT_PROMPT, VWTQ_PROMPT
+
+
+    # It returns a DataFrame
+    @classmethod
+    def evaluate(self, eval_file, **judge_kwargs):
+        import pandas as pd
+
+        data = load(eval_file)
+        assert 'answer' in data and 'prediction' in data
+
+        # print(data[0]['prediction'])
+        # quit(0)
+        correct = 0
+        total = 0
+        score = 0
+
+
+        for datapoint in data.to_dict('records'):
+            total += 1
+            if int(datapoint['answer']) == int_from_string(datapoint['prediction']):
+                correct += 1
+            print('a->',int_from_string(datapoint['prediction']))
+            
+        score = correct/total
+
+        suffix = eval_file.split('.')[-1]
+        result_file = eval_file.replace(f'.{suffix}', '_acc.csv')
+        score_dict = {'CountbenchQA': score}
+        df = pd.DataFrame([score_dict])
+        dump(df, result_file)
+
+
+        return df
+        # might need to be a dataframe
+
+    # TableVQABench adopts a custom prompt
+    def build_prompt(self, line):
+        msgs = super().build_prompt(line)
+        assert msgs[-1]['type'] == 'text'
+        msgs[-1]['value'] += '\nAnswer the question using a single number.'
+        return msgs
+
+
+
+
+class TallyQA(ImageBaseDataset):
+    TYPE = 'VQA'
+    DATASET_URL = { 
+        'TallyQA': 'https://huggingface.co/datasets/moondream/temp-VLMEvalKit-datasets/resolve/main/tallyqa_data.tsv'
+    }
+    DATASET_MD5 = {'TallyQA': '0e56f5ef5d507280a151cc74a1170475'}
+
+    from .utils.tablevqabench import FINTABNETQA_PROMPT, VTABFACT_PROMPT, VWTQ_PROMPT
+
+
+    # It returns a DataFrame
+    @classmethod
+    def evaluate(self, eval_file, **judge_kwargs):
+        import pandas as pd
+
+        data = load(eval_file)
+        assert 'answer' in data and 'prediction' in data
+
+
+        correct = 0
+        total = 0
+        score = 0
+
+
+        for datapoint in data.to_dict('records'):
+            total += 1
+            if int(datapoint['answer']) == int_from_string(datapoint['prediction']):
+                correct += 1
+            
+        score = correct/total
+
+        suffix = eval_file.split('.')[-1]
+        result_file = eval_file.replace(f'.{suffix}', '_acc.csv')
+        score_dict = {'TallyQA': score}
+        df = pd.DataFrame([score_dict])
+        dump(df, result_file)
+
+
+        return df
+        # might need to be a dataframe
+
+    # TableVQABench adopts a custom prompt
+    def build_prompt(self, line):
+        msgs = super().build_prompt(line)
+        assert msgs[-1]['type'] == 'text'
+        msgs[-1]['value'] += '\nAnswer the question using a single number.'
+        return msgs
